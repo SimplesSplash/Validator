@@ -60,17 +60,17 @@ public class Model {
         validator.setErrorHandler(new ErrorHandler() {
             @Override
             public void warning(SAXParseException exception) throws SAXException {
-                exceptions.add(exception.getMessage());
+                 exceptions.add("Строка "+exception.getLineNumber()+", Символ "+exception.getColumnNumber()+":\n"+exception.getMessage()+"\n");
             }
 
             @Override
             public void fatalError(SAXParseException exception) throws SAXException {
-                exceptions.add(exception.getMessage());
+                exceptions.add("Строка "+exception.getLineNumber()+", Символ "+exception.getColumnNumber()+":\n"+exception.getMessage()+"\n");
             }
 
             @Override
             public void error(SAXParseException exception) throws SAXException {
-                exceptions.add(exception.getMessage());
+                 exceptions.add("Строка "+exception.getLineNumber()+", Символ "+exception.getColumnNumber()+":\n"+exception.getMessage()+"\n");
             }
         });
 

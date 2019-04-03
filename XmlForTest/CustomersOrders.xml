@@ -63,7 +63,7 @@
       <OrderDate>1997-05-06T00:00:00</OrderDate>  
       <RequiredDate>1997-05-20T00:00:00</RequiredDate>  
       <ShipInfo ShippedDate="1997-05-09T00:00:00">  
-        <ShipVia>2</ShipVia>  
+        <ShipVia>2v</ShipVia>  
         <Freight>3.35</Freight>  
         <ShipName>Great Lakes Food Market</ShipName>  
         <ShipAddress>2732 Baker Blvd.</ShipAddress>  
