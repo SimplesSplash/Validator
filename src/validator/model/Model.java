@@ -6,10 +6,9 @@
 package validator.model;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import javax.xml.transform.Source;
 import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.Schema;
@@ -18,64 +17,106 @@ import javax.xml.validation.Validator;
 import org.xml.sax.ErrorHandler;
 import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
+import validator.interfaces.Observable;
+import validator.interfaces.Observer;
 
 /**
  *
  * @author alex1
  */
-public class Model {
+public class Model implements Observable {
+
+    private File xmlFile;
+
+    private File xsdFile;
+    
+    private File[] schemas; 
+    
+    private String validationResult;
+
+    public String getValidationResult() {
+        return validationResult;
+    }
+
+    public Model() {
+        this.schemas=getSchemas();
+    }
+
+    private List<Observer> observers= new ArrayList<>();
+
+    public File getXmlFile() {
+        return xmlFile;
+    }
+
+    public void setXmlFile(File xmlFile) {
+        this.xmlFile = xmlFile;
+        this.notifyObservers();
+    }
+
+    public File getXsdFile() {
+        return xsdFile;
+    }
+
+    public void setXsdFile(File xsdFile) {
+        this.xsdFile = xsdFile;
+        this.notifyObservers();
+    }
 
     /**
-     * Валидация документа по XSD Схеме с помощью класса Validator.
-     * Изменен ErrorHandler для того, чтобы валидатор находил все ошибки
-     * в документе, а не только первую.
-     * @param schemaloc Путь к файлу XSD схемы
-     * @param file Путь к файлу, который будет валидироваться
+     * Валидация документа по XSD Схеме с помощью класса Validator. Изменен
+     * ErrorHandler для того, чтобы валидатор находил все ошибки в документе, а
+     * не только первую.
+     *
      * @return Возвращает String С результатом валидации
      */
-    public String valid(String schemaloc, String file) {
-        String result;
-        result = "";
+    public void valid() {
+       validationResult="";
         // 1. Поиск и создание экземпляра фабрики для языка XML Schema
 
         SchemaFactory factory
                 = SchemaFactory.newInstance("http://www.w3.org/2001/XMLSchema");
 
         // 2. Компиляция схемы
-
-        File schemaLocation = new File(schemaloc);
+        File schemaLocation = new File(xsdFile.getAbsolutePath());
 
         Schema schema;
         try {
             schema = factory.newSchema(schemaLocation);
         } catch (org.xml.sax.SAXException ex) {
-            return "Не удалось создать схему для валидации";
-
+            validationResult= "Не удалось создать схему для валидации";
+            notifyObservers();
+            return;
         }
         // 3. Создание валидатора для схемы
         Validator validator = schema.newValidator();
-        
+
         final ArrayList<String> exceptions = new ArrayList<>();
         // 4. Установка нового ErrorHandler
         validator.setErrorHandler(new ErrorHandler() {
             @Override
             public void warning(SAXParseException exception) throws SAXException {
-                 exceptions.add("Строка "+exception.getLineNumber()+", Символ "+exception.getColumnNumber()+":\n"+exception.getMessage()+"\n");
+                exceptions.add("Строка " + exception.getLineNumber()
+                        + ", Символ " + exception.getColumnNumber() + ":\n"
+                        + exception.getMessage() + "\n");
             }
 
             @Override
             public void fatalError(SAXParseException exception) throws SAXException {
-                exceptions.add("Строка "+exception.getLineNumber()+", Символ "+exception.getColumnNumber()+":\n"+exception.getMessage()+"\n");
+                exceptions.add("Строка " + exception.getLineNumber()
+                        + ", Символ " + exception.getColumnNumber()
+                        + ":\n" + exception.getMessage() + "\n");
             }
 
             @Override
             public void error(SAXParseException exception) throws SAXException {
-                 exceptions.add("Строка "+exception.getLineNumber()+", Символ "+exception.getColumnNumber()+":\n"+exception.getMessage()+"\n");
+                exceptions.add("Строка " + exception.getLineNumber()
+                        + ", Символ " + exception.getColumnNumber()
+                        + ":\n" + exception.getMessage() + "\n");
             }
         });
 
         // 5. Разбор проверяемого документа
-        Source source = new StreamSource(file);
+        Source source = new StreamSource(xmlFile.getAbsolutePath());
 
         // 6. Валидация документа
         try {
@@ -83,76 +124,60 @@ public class Model {
 
             if (!exceptions.isEmpty()) {
                 for (String e : exceptions) {
-                    result += e + "\n";
+                    validationResult += e + "\n";
                 }
             } else {
-                result = "Файл успешно прошел валидацию.";
+                validationResult = "Файл успешно прошел валидацию.";
             }
         } catch (SAXException | IOException e) {
-            return "Ошибка валидации";
+            validationResult= "Ошибка валидации";
+            notifyObservers();
+            return;
         }
-        return result;
+       notifyObservers();
 
     }
 
-   
-
     /**
-     * Посимвольно читает заданный файл.
-     * @param file Это файл, который необходимо прочитать
-     * @return Возвращает String с сожержимым файла 
+     * Этот метод проверяет папку Album и обновляет массив всех файлов внутри
+     *
      */
-    public String readFile(File file) {
-        StringBuilder temp = new StringBuilder();
-        String text;
-
-        try (FileReader reader = new FileReader(file.getAbsolutePath())) {
-
-            int c;
-
-            while ((c = reader.read()) != -1) {
-                temp.append((char) c);
-
-            }
-            text = temp.toString();
-            return text;
-        } catch (IOException ex) {
-            text = null;
-
-        }
-        return text;
-
-    }
-   
-
-    /**
-     * Этот метод проверяет папку Album и возвращает список всех файлов внутри  
-     * @return Возвращает массив файлов в папке Album
-     */
-    public File[] getSchemas() {
+    public void updateSchemas() {
         File albumsDir = new File("Album");
-        File[] schemas = albumsDir.listFiles();
-     
+        this.schemas = albumsDir.listFiles();
+        notifyObservers();
+    }
+
+    @Override
+    public void addObservers(List<Observer> obs) {
+
+        this.observers.addAll(obs);
+
+    }
+
+    public File[] getSchemas() {
         return schemas;
     }
 
-    /**
-     * Метод, записывающий текст в файл с помощью класса FileWriter.
-     * @param path Путь к файлу, в который будет производиться запись
-     * @param text Информация, которая будет записана
-     * @return
-     */
-    public String saveFile(String path, String text){
-        String result;
-        try {
-            FileWriter writer = new FileWriter(path);
-            writer.write(text);
-            writer.close();
-            result="Файл успешно сохранен";
-        } catch (IOException ex) {
-           result="Ошибка при записи";
+    @Override
+    public void removeObservers(List<Observer> obs) {
+        this.observers.removeAll(obs);
+    }
+
+    @Override
+    public void addObserver(Observer o) {
+        this.observers.add(o);
+    }
+
+    @Override
+    public void removeObserver(Observer o) {
+        this.observers.remove(o);
+    }
+
+    @Override
+    public void notifyObservers() {
+        for (Observer observer : observers) {
+            observer.updateView();
         }
-        
-        return result;
     }
 }
